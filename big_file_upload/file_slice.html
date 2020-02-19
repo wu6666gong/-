@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+  </head>
+  <body>
+    <input type="file" id="file" />
+    <script>
+      // 请求封装
+      // HTTP 并发blob上传
+      // 当blob Prmise.All 在发送一个merge请求
+      function request({
+        url,
+        method = "POST",
+        data,
+        headers = {},
+        requestList
+      }) {
+        return new Promise(reslove => {
+          const xhr = new XMLHttpRequest();
+          xhr.open(method, url);
+          Object.keys(headers).forEach(key => {
+            xhr.setRequestHeader(key, headers[keys]);
+          });
+          xhr.send(data);
+          xhr.onload = e => {
+            reslove({
+              data: e.target.response
+            });
+          };
+        });
+      }
+      const mergeRequest = async () => {
+        await request({
+          url: "http://localhost:3000/merge",
+          headers: {
+            "content-type": "application/json"
+          }
+        });
+        alert("上传成功");
+      };
+      document
+        .getElementById("file")
+        .addEventListener("change", async event => {
+          const file = event.target.files[0]; //es6 存在文件对象
+          const file_name = file.name.split(".")[0];
+          console.log(file);
+          console.log(Object.prototype.toString.call(file)); // [object File]
+          console.log(file.slice(0, 102400));
+          console.log(Object.prototype.toString.call(file.slice(0, 102400))); // Bolb对象
+          let cur = 0,
+            size = 1024 * 1024 * 0.01;
+          const fileChunkList = [];
+          while (cur < file.size) {
+            let chunkFile = file.slice(cur, size + cur);
+            fileChunkList.push({
+              file: chunkFile
+            });
+            cur += size;
+          }
+
+          console.log(fileChunkList);
+          const requestList = fileChunkList
+            .map(({ file }, index) => {
+              const formData = new FormData();
+              formData.append("chunk", file);
+              formData.append("filename", `${file_name}-${index}`);
+              return {
+                formData
+              };
+            })
+            .map(({ formData }) =>
+              request({
+                url: "http://localhost:3000",
+                data: formData
+              })
+            );
+          await Promise.all(requestList);
+          await mergeRequest();
+          console.log();
+        });
+    </script>
+  </body>
+</html>
